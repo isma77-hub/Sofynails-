@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>SOFY NAILS MANICURÍA</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<style>
+:root{--bg:#f3ece1;--surf:#fffaf2;--ink:#181513;--mut:#7a6f62;--gold:#b8975a;--gold2:#d9c08f;--blk:#14110f;--line:#e4d8c4}
+@media (prefers-color-scheme:dark){:root{--bg:#0f0d0b;--surf:#1a1613;--ink:#f3ece1;--mut:#a69a89;--line:#2e2822}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;min-height:100%}
+body{background:var(--bg);color:var(--ink);font:16px/1.45 "Helvetica Neue",Arial,sans-serif;max-width:430px;margin:0 auto;padding-top:env(safe-area-inset-top,0px)}
+h2,h3,.logo{font-family:Georgia,"Times New Roman",serif;font-weight:500;margin:0}
+#app{padding:16px 18px 110px}
+.logo{letter-spacing:.28em;color:var(--gold);font-size:22px;text-align:center}
+.logo small{display:block;font-size:10px;letter-spacing:.35em;margin-top:2px}
+.btn{display:block;width:100%;padding:16px;border:0;border-radius:14px;background:var(--blk);color:var(--gold2);font-size:16px;margin-top:14px;box-shadow:0 6px 16px rgba(0,0,0,.18)}
+.btn.alt{background:transparent;color:var(--ink);border:1px solid var(--gold);box-shadow:none}
+.btn[disabled]{opacity:.4}
+.card{background:var(--surf);border:1px solid var(--line);border-radius:16px;padding:14px;margin-top:12px;box-shadow:0 4px 14px rgba(60,40,10,.06)}
+.row{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.mut{color:var(--mut);font-size:14px}.gold{color:var(--gold)}
+h2{font-size:28px;margin:14px 0 4px}h3{font-size:21px}
+.chips{display:flex;gap:8px;overflow-x:auto;padding:4px 0}
+.chip{flex:0 0 auto;padding:10px 14px;border-radius:999px;border:1px solid var(--line);background:var(--surf);color:var(--ink);font-size:15px;min-width:56px}
+.chip.on{background:var(--blk);color:var(--gold2);border-color:var(--gold)}
+.chip[disabled]{opacity:.35;text-decoration:line-through}
+.sv{width:100%;text-align:left;color:var(--ink);font:inherit}.sv.on{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold)}
+nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;background:var(--surf);border-top:1px solid var(--line);display:flex;padding:8px 4px calc(8px + env(safe-area-inset-bottom,0px))}
+nav button{flex:1;background:none;border:0;color:var(--mut);font-size:11px;padding:6px 0}nav button.on{color:var(--gold)}
+nav i{display:block;font-style:normal;font-size:20px}
+.vc{background:linear-gradient(135deg,#1c1713,#0d0b09);color:var(--gold2);border-radius:20px;padding:20px;border:1px solid var(--gold);box-shadow:0 10px 24px rgba(0,0,0,.3);margin-top:14px}
+.stamps{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin:16px 0}
+.st{aspect-ratio:1;border-radius:50%;border:1px dashed var(--gold);display:grid;place-items:center;font-size:18px;color:var(--gold2)}
+.st.f{background:var(--gold);color:#14110f;border:0}
+.bar{height:6px;border-radius:6px;background:#3a3126;overflow:hidden}.bar b{display:block;height:100%;background:var(--gold2)}
+input{width:100%;padding:15px;border-radius:12px;border:1px solid var(--line);background:var(--surf);color:var(--ink);font-size:16px;margin-top:10px}
+.msg{background:var(--blk);color:var(--gold2);padding:12px;border-radius:12px;text-align:center;margin-top:12px}
+</style></head><body><div id="app"></div><nav id="nav" hidden></nav>
+<script>
+const sb=supabase.createClient('https://ymhinivrifnvycxtdomm.supabase.co','sb_publishable_7v85JO1Wkavrsw_mgnoSGw_O2bq9ENS');
+const H=["10:00","11:30","13:00","15:00","16:30","18:00"];
+let st={u:null,p:null,tab:'home',svcs:[],trn:[],n:0,svc:null,day:null,hr:null,occ:[],done:false,msg:'',ready:false};
+const $=i=>document.getElementById(i);
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const money=n=>'$'+Number(n).toLocaleString('es-AR');
+const days=[...Array(7)].map((_,i)=>{const d=new Date();d.setDate(d.getDate()+i+1);return d});
+const dk=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+const dl=d=>d.toLocaleDateString('es-AR',{weekday:'short',day:'numeric',month:'short'});
+const dt=v=>new Date(v).toLocaleString('es-AR',{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
+const logo='<div class="logo">SOFY NAILS<small>MANICURÍA</small></div>';
+const name=()=>esc((st.p&&st.p.nombre)||'')||'';
+function go(t){st.tab=t;st.msg='';render()}
+async function load(){
+ if(!st.u){st.ready=true;return render()}
+ const [s,t,m,p]=await Promise.all([
+  sb.from('servicios').select('*').eq('activo',true).order('id'),
+  sb.from('turnos').select('id,inicio,estado,servicios(nombre,precio)').order('inicio',{ascending:false}),
+  sb.from('sellos_movimientos').select('cantidad'),
+  sb.from('profiles').select('*').eq('id',st.u.id).maybeSingle()]);
+ st.svcs=s.data||[];st.trn=t.data||[];st.n=Math.max(0,(m.data||[]).reduce((a,x)=>a+x.cantidad,0));st.p=p.data;
+ st.ready=true;render()}
+sb.auth.onAuthStateChange((_e,s)=>{st.u=s?s.user:null;setTimeout(load,0)});
+const google=()=>sb.auth.signInWithOAuth({provider:'google',options:{redirectTo:location.origin+location.pathname}});
+const salir=async()=>{await sb.auth.signOut()};
+async function pickDay(d){st.day=d;st.hr=null;const r=await sb.rpc('horarios_ocupados',{dia:d});st.occ=(r.data||[]).map(v=>new Date(v).toTimeString().slice(0,5));render()}
+async function reservar(){
+ const inicio=new Date(st.day+'T'+st.hr+':00').toISOString();
+ const r=await sb.from('turnos').insert({cliente_id:st.u.id,servicio_id:st.svc,inicio});
+ if(r.error){st.msg=r.error.code==='23505'?'Ese horario ya fue reservado. Elegí otro.':'No pudimos reservar. Probá de nuevo.';await pickDay(st.day);return}
+ st.done=true;await load()}
+async function cancelar(id){if(!confirm('¿Cancelar este turno?'))return;await sb.from('turnos').update({estado:'cancelado'}).eq('id',id);await load()}
+async function guardar(){
+ const r=await sb.from('profiles').update({nombre:$('pn').value.trim(),apellido:$('pa').value.trim(),telefono:$('pt').value.trim()}).eq('id',st.u.id);
+ st.msg=r.error?'No se pudo guardar.':'Datos guardados.';await load()}
+function card(){const n=Math.min(st.n,10);let h='<div class="vc">'+logo+'<div class="serif" style="font-family:Georgia,serif;font-size:24px;margin-top:14px">'+(((st.p&&st.p.nombre)||'')+' '+((st.p&&st.p.apellido)||'')).trim().replace(/[&<>"]/g,'')+'</div><div style="color:var(--gold2)">'+n+' de 10 visitas</div><div class="stamps">';
+ for(let i=1;i<=10;i++)h+='<div class="st '+(i<=n?'f':'')+'">'+(i<=n?'✓':(i==5||i==10?'★':''))+'</div>';
+ return h+'</div><div class="bar"><b style="width:'+n*10+'%"></b></div><div style="margin-top:10px;font-size:14px">'+(n>=10?'¡Completaste tu tarjeta! Pedí tu recompensa.':n<5?'Te faltan '+(5-n)+' para tu primer beneficio':'Te faltan '+(10-n)+' para tu recompensa mayor')+'</div></div>'}
+function view(){
+ if(!st.ready)return'<div style="padding-top:30vh">'+logo+'</div>';
+ if(!st.u)return'<div style="padding-top:10vh">'+logo+'<h2 style="text-align:center;margin-top:40px">Tu momento de cuidado</h2><p class="mut" style="text-align:center">Reservá tu turno y sumá sellos en cada visita.</p><button class="btn" onclick="google()">Continuar con Google</button><p class="mut" style="text-align:center;margin-top:18px">El registro con teléfono y SMS se suma en la próxima etapa.</p></div>';
+ if(st.tab=='home')return logo+'<h2 style="margin-top:18px">Hola'+(name()?', '+name():'')+'</h2><p class="mut" style="margin:0">¿Cuándo querés tu próximo turno?</p><button class="btn" onclick="go(\'book\')">Reservar un turno</button><h3 style="margin-top:20px">Servicios</h3>'+st.svcs.map(x=>'<div class="card row"><div><b>'+esc(x.nombre)+'</b><div class="mut">'+x.duracion_min+' min</div></div><span class="gold">'+money(x.precio)+'</span></div>').join('')+'<div onclick="go(\'loy\')">'+card()+'</div>';
+ if(st.tab=='book')return book();
+ if(st.tab=='turns'){const f=new Date();return'<h2>Mis turnos</h2>'+(st.trn.length?st.trn.map(t=>'<div class="card"><div class="row"><b>'+esc(t.servicios?t.servicios.nombre:'')+'</b><span class="mut">'+({reservado:'Reservado',realizado:'Realizado',cancelado:'Cancelado'}[t.estado])+'</span></div><div class="mut">'+dt(t.inicio)+'</div>'+(t.estado=='reservado'&&new Date(t.inicio)>f?'<button class="btn alt" onclick="cancelar('+t.id+')">Cancelar turno</button>':'')+'</div>').join(''):'<div class="card mut">Todavía no tenés turnos.</div><button class="btn" onclick="go(\'book\')">Reservar un turno</button>')}
+ if(st.tab=='loy')return'<h2>Tu tarjeta</h2>'+card()+'<p class="mut">Los sellos se suman cuando tu turno queda marcado como realizado.</p>';
+ const p=st.p||{};return'<h2>Mi perfil</h2><input id="pn" placeholder="Nombre" value="'+esc(p.nombre)+'"><input id="pa" placeholder="Apellido" value="'+esc(p.apellido)+'"><input id="pt" type="tel" placeholder="Teléfono" value="'+esc(p.telefono)+'"><input value="'+esc(st.u.email)+'" disabled><button class="btn" onclick="guardar()">Guardar datos</button>'+(st.msg?'<div class="msg">'+esc(st.msg)+'</div>':'')+'<button class="btn alt" onclick="salir()">Cerrar sesión</button>'}
+function book(){
+ const sv=st.svcs.find(x=>x.id==st.svc);
+ if(st.done)return'<h2>Reserva confirmada</h2>'+logo+'<div class="card"><b>'+esc(sv.nombre)+'</b><div class="mut">'+dl(new Date(st.day+'T12:00'))+' · '+st.hr+'</div><div class="gold">'+money(sv.precio)+'</div></div><button class="btn" onclick="st.done=false;st.svc=st.day=st.hr=null;go(\'turns\')">Ver mis turnos</button>';
+ let h='<h2>Reservar</h2><p class="mut" style="margin:0">1. Elegí tu servicio</p>'+st.svcs.map(x=>'<button class="card sv '+(st.svc==x.id?'on':'')+'" onclick="st.svc='+x.id+';render()"><div class="row"><b>'+esc(x.nombre)+'</b><span class="gold">'+money(x.precio)+'</span></div><div class="mut">'+esc(x.descripcion)+' · '+x.duracion_min+' min</div></button>').join('');
+ if(st.svc)h+='<p class="mut" style="margin-top:16px">2. Elegí el día</p><div class="chips">'+days.map(d=>'<button class="chip '+(st.day==dk(d)?'on':'')+'" onclick="pickDay(\''+dk(d)+'\')">'+dl(d)+'</button>').join('')+'</div>';
+ if(st.day)h+='<p class="mut" style="margin-top:12px">3. Horarios disponibles</p><div class="chips" style="flex-wrap:wrap">'+H.map(x=>'<button class="chip '+(st.hr==x?'on':'')+'" '+(st.occ.includes(x)?'disabled':'')+' onclick="st.hr=\''+x+'\';render()">'+x+'</button>').join('')+'</div>';
+ return h+(st.msg?'<div class="msg">'+esc(st.msg)+'</div>':'')+'<button class="btn" '+(st.hr?'':'disabled')+' onclick="reservar()">Confirmar reserva</button>'}
+function render(){
+ $('app').innerHTML=view();const a=st.ready&&st.u;$('nav').hidden=!a;
+ if(a)$('nav').innerHTML=[['home','⌂','Inicio'],['book','✦','Reservar'],['turns','◷','Mis turnos'],['loy','❖','Fidelización'],['me','☺','Perfil']].map(x=>'<button class="'+(st.tab==x[0]?'on':'')+'" onclick="go(\''+x[0]+'\')"><i>'+x[1]+'</i>'+x[2]+'</button>').join('')}
+render();
+</script></body></html>
